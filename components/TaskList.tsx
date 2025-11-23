@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { aiListTasks, aiDeleteTask } from "@/services/aiTools";
 import type { Task } from "@/types/task";
+import { deleteTask, listTasks } from "@/services/taskService";
 
 export default function TaskList({ onRefresh }: { onRefresh?: () => void }) {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -13,7 +13,7 @@ export default function TaskList({ onRefresh }: { onRefresh?: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await aiListTasks();
+      const res = await listTasks();
       // Handle different response structures
       // Could be res directly, res.tasks, res.data, etc.
       const taskList = Array.isArray(res) ? res : res?.tasks || res?.data || [];
@@ -33,7 +33,8 @@ export default function TaskList({ onRefresh }: { onRefresh?: () => void }) {
 
   async function handleDelete(id: string) {
     try {
-      await aiDeleteTask(id);
+      console.log("deleting first task", id);
+      await deleteTask(id);
       await loadTasks();
       // Also trigger parent refresh if callback exists
       onRefresh?.();
@@ -72,7 +73,7 @@ export default function TaskList({ onRefresh }: { onRefresh?: () => void }) {
         <div className="space-y-3">
           {tasks.map((task) => (
             <div
-              key={task._id}
+              key={task.id}
               className="flex items-center justify-between border rounded p-3 hover:bg-gray-50 transition-colors"
             >
               <div className="flex-1">
@@ -98,7 +99,7 @@ export default function TaskList({ onRefresh }: { onRefresh?: () => void }) {
                 </span>
 
                 <button
-                  onClick={() => handleDelete(task._id)}
+                  onClick={() => handleDelete(task.id)}
                   className="text-red-500 hover:text-red-700 text-sm font-medium"
                 >
                   Delete
