@@ -26,7 +26,10 @@ export default function CreateTask({ onCreated }: { onCreated?: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="bg-white p-4 rounded-lg shadow">
+    <form
+      onSubmit={submit}
+      className="bg-white p-4 rounded-2xl border border-gray-200 dark:border-gray-800 "
+    >
       <div className="flex gap-3">
         <input
           className="flex-1 p-2 border rounded"

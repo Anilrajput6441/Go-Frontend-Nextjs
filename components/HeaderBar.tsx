@@ -1,11 +1,25 @@
 "use client";
 import React from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function HeaderBar() {
+  const { user } = useAuth();
+  const userName = user?.name || "User";
+
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
   return (
-    <header className="flex items-center justify-between p-6 bg-transparent">
+    <header className="flex items-center justify-between p-6 bg-white border border-gray-200 dark:border-gray-800 rounded-2xl">
       <div>
-        <h1 className="text-2xl font-bold">Good Morning, Pristia!</h1>
+        <h1 className="text-2xl font-bold">
+          {getGreeting()}, {userName}!
+        </h1>
         <p className="text-sm text-gray-500">What do you plan to do today?</p>
       </div>
 

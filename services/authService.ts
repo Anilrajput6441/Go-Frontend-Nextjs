@@ -2,12 +2,7 @@ import api from "@/lib/axios";
 
 export async function login(email: string, password: string) {
   const res = await api.post("/auth/login", { email, password });
-  const token = res.data.access_token;
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem("access_token", token);
-  }
-
+  // Return the full response data - context will handle saving token and user data
   return res.data;
 }
 
@@ -17,7 +12,10 @@ export async function registerUser(data: unknown) {
 }
 
 export async function refreshToken() {
-  const res = await api.post("/auth/refresh", {});
+  console.log("refreshToken");
+  const refresh_token = localStorage.getItem("refresh_token");
+  console.log("refresh_token", refresh_token);
+  const res = await api.post("/auth/refresh", { refresh_token });
   const token = res.data.access_token;
 
   if (typeof window !== "undefined") {

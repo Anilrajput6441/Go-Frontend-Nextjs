@@ -1,72 +1,47 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import type { Task } from "@/types/task";
-import { deleteTask, listTasks } from "@/services/taskService";
+import { deleteTask } from "@/services/taskService";
 
-export default function TaskList({ onRefresh }: { onRefresh?: () => void }) {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function loadTasks() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await listTasks();
-      // Handle different response structures
-      // Could be res directly, res.tasks, res.data, etc.
-      const taskList = Array.isArray(res) ? res : res?.tasks || res?.data || [];
-      setTasks(taskList);
-    } catch (err) {
-      console.error("Failed to load tasks:", err);
-      setError("Failed to load tasks. Please try again.");
-      setTasks([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadTasks();
-  }, []); // Component remounts when key changes, so this will run again
+export default function TaskList({
+  tasks = [],
+  loading: initialLoading,
+  onRefresh,
+}: {
+  tasks?: Task[];
+  loading?: boolean;
+  onRefresh?: () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
 
   async function handleDelete(id: string) {
     try {
       console.log("deleting first task", id);
+      setDeleting(true);
       await deleteTask(id);
-      await loadTasks();
-      // Also trigger parent refresh if callback exists
       onRefresh?.();
     } catch (err) {
       console.error("delete failed", err);
       alert("Failed to delete task");
+    } finally {
+      setDeleting(false);
     }
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
+    <div className="bg-white p-6 rounded-2xl border border-gray-200 dark:border-gray-800 h-full">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">Today Task</h2>
         <div className="text-sm text-gray-500">
-          {loading
+          {initialLoading || deleting
             ? "..."
             : `${tasks.length} ${tasks.length === 1 ? "item" : "items"}`}
         </div>
       </div>
 
-      {loading ? (
+      {initialLoading ? (
         <p className="text-sm text-gray-500">Loading tasks...</p>
-      ) : error ? (
-        <div className="text-sm text-red-500">
-          {error}
-          <button
-            onClick={loadTasks}
-            className="ml-2 text-blue-600 hover:underline"
-          >
-            Retry
-          </button>
-        </div>
       ) : tasks.length === 0 ? (
         <p className="text-sm text-gray-500">No tasks yet. Create one above!</p>
       ) : (

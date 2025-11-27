@@ -18,7 +18,7 @@ interface Message {
   text: string;
 }
 
-export default function AIChat() {
+export default function AIChat({ onAIAction }: { onAIAction?: () => void }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,12 +68,18 @@ export default function AIChat() {
           argsObj.title as string,
           (argsObj.description as string) || ""
         );
+        // Refresh tasks after AI creates a task
+        onAIAction?.();
       } else if (name === "list_tasks") {
         result = await aiListTasks();
       } else if (name === "update_task") {
         result = await aiUpdateTask({ ...argsObj });
+        // Refresh tasks after AI updates a task
+        onAIAction?.();
       } else if (name === "delete_task") {
         result = await aiDeleteTask(argsObj.id as string);
+        // Refresh tasks after AI deletes a task
+        onAIAction?.();
       } else {
         result = { error: "Unknown tool" };
       }
@@ -121,9 +127,9 @@ export default function AIChat() {
   }
 
   return (
-    <div className="flex flex-col h-full max-h-[500px] p-4 bg-white border rounded-xl shadow-sm">
+    <div className="flex flex-col h-full bg-white border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden">
       {/* MESSAGES AREA */}
-      <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+      <div className="flex-1 overflow-y-scroll space-y-4 p-4 min-h-0 max-h-[calc(100vh-12rem)] overscroll-contain scrollbar-thin">
         {messages.map((m, i) => (
           <div
             key={i}
@@ -157,9 +163,9 @@ export default function AIChat() {
       </div>
 
       {/* INPUT AREA */}
-      <div className="mt-4 flex gap-2">
+      <div className="p-4 pt-0 flex gap-2 flex-shrink-0 border-t border-gray-200 dark:border-gray-800 rounded-b-xl">
         <input
-          className="flex-1 border p-2 rounded-xl focus:ring focus:ring-blue-300 outline-none"
+          className="flex-1 p-2 rounded-bl-xl outline-none"
           placeholder="Ask Merlin anything..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -171,7 +177,7 @@ export default function AIChat() {
         <button
           onClick={handleSend}
           disabled={loading}
-          className="bg-blue-600 text-white px-5 py-2 rounded-xl shadow hover:bg-blue-700 disabled:bg-gray-400"
+          className="bg-blue-600 text-white px-5 py-2 rounded-br-xl shadow hover:bg-blue-700 disabled:bg-gray-400"
         >
           Send
         </button>
