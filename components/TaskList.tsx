@@ -2,7 +2,14 @@
 
 import React, { useState } from "react";
 import type { Task } from "@/types/task";
-import { deleteTask } from "@/services/taskService";
+import { deleteTask, updateTask } from "@/services/taskService";
+
+// status options for the task list
+const STATUS_OPTIONS = [
+  { value: "todo", label: "Todo" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "done", label: "Done" },
+];
 
 export default function TaskList({
   tasks = [],
@@ -14,6 +21,20 @@ export default function TaskList({
   onRefresh?: () => void;
 }) {
   const [deleting, setDeleting] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  async function handleStatusUpdate(taskId: string, newStatus: string) {
+    try {
+      setUpdatingId(taskId);
+      await updateTask(taskId, { status: newStatus });
+      onRefresh?.();
+    } catch (err) {
+      console.error("failed to update status", err);
+      alert("Failed to update status");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
 
   async function handleDelete(id: string) {
     try {
@@ -61,17 +82,20 @@ export default function TaskList({
               </div>
 
               <div className="flex items-center gap-3">
-                <span
-                  className={`text-xs px-2 py-1 rounded-full ${
-                    task.status === "done"
-                      ? "bg-green-100 text-green-800"
-                      : task.status === "in-progress"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
+                <select
+                  value={task.status}
+                  disabled={updatingId === task.id}
+                  onChange={(e) => handleStatusUpdate(task.id, e.target.value)}
+                  className={`text-xs rounded border px-2 py-1 bg-white
+    ${updatingId === task.id ? "opacity-50" : ""}
+  `}
                 >
-                  {task.status}
-                </span>
+                  {STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
 
                 <button
                   onClick={() => handleDelete(task.id)}
