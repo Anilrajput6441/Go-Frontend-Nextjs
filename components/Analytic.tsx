@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { Task } from "@/types/task";
 import {
   BarChart,
@@ -29,6 +29,13 @@ interface AnalyticProps {
   tasks: Task[];
 }
 
+type DateFilter = "today" | "last7days" | "thismonth" | "custom";
+
+interface DateRange {
+  start: Date;
+  end: Date;
+}
+
 const COLORS = {
   todo: "#94a3b8",
   "in-progress": "#fbbf24",
@@ -42,17 +49,143 @@ function normalizeStatus(status: string): string {
 }
 
 export default function Analytic({ tasks }: AnalyticProps) {
+  useEffect(() => {
+    console.log(tasks);
+  }, [tasks]);
+  const [dateFilter, setDateFilter] = useState<DateFilter>("last7days");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
+
+  // Calculate date range based on filter
+  const dateRange = useMemo((): DateRange => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    switch (dateFilter) {
+      case "today":
+        return {
+          start: new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate(),
+            0,
+            0,
+            0,
+            0
+          ),
+          end: new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate(),
+            23,
+            59,
+            59,
+            999
+          ),
+        };
+      case "last7days":
+        start.setDate(today.getDate() - 6);
+        return { start, end: today };
+      case "thismonth":
+        start.setDate(1);
+        return { start, end: today };
+      case "custom":
+        if (customStartDate && customEndDate) {
+          const customStart = new Date(customStartDate);
+          customStart.setHours(0, 0, 0, 0);
+          const customEnd = new Date(customEndDate);
+          customEnd.setHours(23, 59, 59, 999);
+          return { start: customStart, end: customEnd };
+        }
+        return { start, end: today };
+      default:
+        return { start, end: today };
+    }
+  }, [dateFilter, customStartDate, customEndDate]);
+
+  // Helper to get date from task (handles both camelCase and snake_case)
+  const getTaskDate = (
+    task: Task,
+    field: "created" | "updated"
+  ): string | undefined => {
+    const taskWithSnakeCase = task as Task & {
+      created_at?: string;
+      updated_at?: string;
+    };
+    if (field === "created") {
+      return taskWithSnakeCase.created_at || task.createdAt;
+    } else {
+      return taskWithSnakeCase.updated_at || task.updatedAt;
+    }
+  };
+
+  // Filter tasks by date range - moved into useMemo to avoid dependency issues
+  const filteredTasks = useMemo(() => {
+    const filterTasksByDate = (
+      tasksToFilter: Task[],
+      dateRangeToUse: DateRange
+    ): Task[] => {
+      const getDateString = (date: Date): string => {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}-${String(date.getDate()).padStart(2, "0")}`;
+      };
+
+      const parseDateString = (dateStr: string | undefined): string | null => {
+        if (!dateStr) return null;
+        try {
+          const date = new Date(dateStr);
+          if (isNaN(date.getTime())) return null;
+          return getDateString(date);
+        } catch {
+          return null;
+        }
+      };
+
+      const startStr = getDateString(dateRangeToUse.start);
+      const endStr = getDateString(dateRangeToUse.end);
+
+      // Filter tasks by date range - strict filtering (no fallbacks)
+      return tasksToFilter.filter((task) => {
+        // Get dates using helper (handles both camelCase and snake_case)
+        const createdStr = parseDateString(getTaskDate(task, "created"));
+        const updatedStr = parseDateString(getTaskDate(task, "updated"));
+
+        // If task has no dates, exclude it from date filtering
+        if (!createdStr && !updatedStr) {
+          return false;
+        }
+
+        // Check if task was created or updated within the date range
+        const createdInRange =
+          createdStr && createdStr >= startStr && createdStr <= endStr;
+        const updatedInRange =
+          updatedStr && updatedStr >= startStr && updatedStr <= endStr;
+
+        return createdInRange || updatedInRange;
+      });
+    };
+
+    return filterTasksByDate(tasks, dateRange);
+  }, [tasks, dateRange]);
+
+  // Use filtered tasks - if no tasks match the date range, show empty results
+  const tasksToUse = filteredTasks;
+
   // Calculate metrics
   const metrics = useMemo(() => {
-    const total = tasks.length;
-    const completed = tasks.filter(
+    const total = tasksToUse.length;
+    const completed = tasksToUse.filter(
       (t) => normalizeStatus(t.status) === "done"
     ).length;
     // Handle both "in-progress" and "in_progress" formats
-    const inProgress = tasks.filter(
+    const inProgress = tasksToUse.filter(
       (t) => normalizeStatus(t.status) === "in-progress"
     ).length;
-    const todo = tasks.filter(
+    const todo = tasksToUse.filter(
       (t) => normalizeStatus(t.status) === "todo"
     ).length;
     const remaining = todo + inProgress;
@@ -66,10 +199,10 @@ export default function Analytic({ tasks }: AnalyticProps) {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    const completedThisMonth = tasks.filter((task) => {
-      if (normalizeStatus(task.status) !== "done" || !task.updatedAt)
-        return false;
-      const updatedDate = new Date(task.updatedAt);
+    const completedThisMonth = tasksToUse.filter((task) => {
+      const updatedAt = getTaskDate(task, "updated");
+      if (normalizeStatus(task.status) !== "done" || !updatedAt) return false;
+      const updatedDate = new Date(updatedAt);
       return (
         updatedDate.getMonth() === currentMonth &&
         updatedDate.getFullYear() === currentYear
@@ -88,10 +221,10 @@ export default function Analytic({ tasks }: AnalyticProps) {
         day: "numeric",
       });
 
-      const count = tasks.filter((task) => {
-        if (normalizeStatus(task.status) !== "done" || !task.updatedAt)
-          return false;
-        const taskDate = new Date(task.updatedAt);
+      const count = tasksToUse.filter((task) => {
+        const updatedAt = getTaskDate(task, "updated");
+        if (normalizeStatus(task.status) !== "done" || !updatedAt) return false;
+        const taskDate = new Date(updatedAt);
         return (
           taskDate.getDate() === date.getDate() &&
           taskDate.getMonth() === date.getMonth() &&
@@ -140,12 +273,16 @@ export default function Analytic({ tasks }: AnalyticProps) {
       let weekInProgress = 0;
       let weekCreated = 0;
 
-      tasks.forEach((task) => {
+      tasksToUse.forEach((task) => {
+        // Get dates using helper (handles both formats)
+        const updatedAt = getTaskDate(task, "updated");
+        const createdAt = getTaskDate(task, "created");
+
         // Try to use dates if available
-        if (task.updatedAt || task.createdAt) {
+        if (updatedAt || createdAt) {
           // Check completed by updatedAt
-          if (normalizeStatus(task.status) === "done" && task.updatedAt) {
-            const dateStr = parseDateString(task.updatedAt);
+          if (normalizeStatus(task.status) === "done" && updatedAt) {
+            const dateStr = parseDateString(updatedAt);
             if (dateStr && dateStr >= weekStartStr && dateStr <= weekEndStr) {
               weekCompleted++;
             }
@@ -153,64 +290,22 @@ export default function Analytic({ tasks }: AnalyticProps) {
           // Check in-progress by updatedAt
           else if (
             normalizeStatus(task.status) === "in-progress" &&
-            task.updatedAt
+            updatedAt
           ) {
-            const dateStr = parseDateString(task.updatedAt);
+            const dateStr = parseDateString(updatedAt);
             if (dateStr && dateStr >= weekStartStr && dateStr <= weekEndStr) {
               weekInProgress++;
             }
           }
           // Check created by createdAt
-          if (task.createdAt) {
-            const dateStr = parseDateString(task.createdAt);
+          if (createdAt) {
+            const dateStr = parseDateString(createdAt);
             if (dateStr && dateStr >= weekStartStr && dateStr <= weekEndStr) {
               weekCreated++;
             }
           }
         }
       });
-
-      // For the most recent week (weekIndex === 0), always show current task counts
-      // This ensures there's always visible data in the chart
-      if (weekIndex === 0) {
-        const currentCompleted = tasks.filter(
-          (t) => normalizeStatus(t.status) === "done"
-        ).length;
-        const currentInProgress = tasks.filter(
-          (t) => normalizeStatus(t.status) === "in-progress"
-        ).length;
-        const currentTotal = tasks.length;
-
-        // If we don't have date-based data, use current counts
-        if (weekCompleted === 0 && weekInProgress === 0 && weekCreated === 0) {
-          weekCompleted = currentCompleted;
-          weekInProgress = currentInProgress;
-          weekCreated = currentTotal;
-        }
-      }
-
-      // For other weeks, if no date data, distribute based on a simple pattern
-      if (
-        weekCompleted === 0 &&
-        weekInProgress === 0 &&
-        weekCreated === 0 &&
-        weekIndex > 0
-      ) {
-        // Show a decreasing pattern for visualization
-        const currentCompleted = tasks.filter(
-          (t) => normalizeStatus(t.status) === "done"
-        ).length;
-        const currentInProgress = tasks.filter(
-          (t) => normalizeStatus(t.status) === "in-progress"
-        ).length;
-        const currentTotal = tasks.length;
-
-        // Show decreasing amounts (simulated historical data)
-        const factor = Math.max(0, 1 - weekIndex * 0.3);
-        weekCompleted = Math.floor(currentCompleted * factor);
-        weekInProgress = Math.floor(currentInProgress * factor);
-        weekCreated = Math.floor(currentTotal * factor);
-      }
 
       // Format labels
       const startLabel = weekStart.toLocaleDateString("en-US", {
@@ -243,7 +338,7 @@ export default function Analytic({ tasks }: AnalyticProps) {
       dailyCompletions,
       weeklyTrends,
     };
-  }, [tasks]);
+  }, [tasksToUse]);
 
   // Pie chart data - handle both status formats
   const statusData = [
@@ -260,12 +355,99 @@ export default function Analytic({ tasks }: AnalyticProps) {
     <div className="flex-1 pl-5 flex flex-col min-w-0 overflow-y-auto">
       <div className="space-y-6 p-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-          <p className="text-gray-500 mt-1">
-            Track your productivity and task completion
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+            <p className="text-gray-500 mt-1">
+              Track your productivity and task completion
+            </p>
+          </div>
+
+          {/* Date Filter */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg border p-2">
+              <button
+                onClick={() => setDateFilter("today")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  dateFilter === "today"
+                    ? "bg-indigo-600 text-white"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setDateFilter("last7days")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  dateFilter === "last7days"
+                    ? "bg-indigo-600 text-white"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                Last 7 Days
+              </button>
+              <button
+                onClick={() => setDateFilter("thismonth")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  dateFilter === "thismonth"
+                    ? "bg-indigo-600 text-white"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                This Month
+              </button>
+              <button
+                onClick={() => setDateFilter("custom")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  dateFilter === "custom"
+                    ? "bg-indigo-600 text-white"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                Custom Range
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* Custom Date Range Inputs */}
+        {dateFilter === "custom" && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border p-4">
+            <div className="flex items-center gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                />
+              </div>
+              {customStartDate && customEndDate && (
+                <div className="ml-auto">
+                  <p className="text-sm text-gray-500">
+                    Showing tasks from{" "}
+                    {new Date(customStartDate).toLocaleDateString()} to{" "}
+                    {new Date(customEndDate).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
