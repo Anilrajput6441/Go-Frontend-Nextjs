@@ -1,20 +1,19 @@
 "use client";
 import AppLayout from "@/components/AppLayout";
 import Sidebar from "@/components/Sidebar";
-import HeaderBar from "@/components/HeaderBar";
-import CreateTask from "@/components/CreateTask";
-import TaskList from "@/components/TaskList";
-import AIPanel from "@/components/AIPanel";
+import TodoView from "@/components/TodoView";
 import AuthGuard from "@/components/AuthGuard";
 import { useState, useEffect } from "react";
 import type { Task } from "@/types/task";
 import { listTasks } from "@/services/taskService";
+import Analytic from "@/components/Analytic";
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [aiCollapsed, setAiCollapsed] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [selectedView, setSelectedView] = useState("todo");
 
   async function refreshTasks() {
     try {
@@ -46,32 +45,19 @@ export default function DashboardPage() {
     <AuthGuard>
       <AppLayout>
         <div className="flex h-full overflow-hidden p-5">
-          <Sidebar />
+          <Sidebar selectedView={selectedView} onViewChange={setSelectedView} />
 
-          <div className="flex-1 pl-5 flex flex-col min-w-0">
-            <main className="grid grid-cols-12 gap-1 flex-1 min-h-0 overflow-hidden">
-              <div className="col-span-8 space-y-5 overflow-y-auto pr-4">
-                <HeaderBar />
-                {/* Center content */}
-                <div className="space-y-6">
-                  <CreateTask onCreated={refreshTasks} />
-                  <TaskList
-                    tasks={tasks}
-                    loading={loading}
-                    onRefresh={refreshTasks}
-                  />
-                </div>
-              </div>
-              {/* Right AI Panel */}
-              <div className="col-span-4 h-full">
-                <AIPanel
-                  collapsed={aiCollapsed}
-                  onClose={() => setAiCollapsed(true)}
-                  onAIAction={refreshTasks}
-                />
-              </div>
-            </main>
-          </div>
+          {selectedView === "todo" && (
+            <TodoView
+              tasks={tasks}
+              loading={loading}
+              refreshTasks={refreshTasks}
+              aiCollapsed={aiCollapsed}
+              setAiCollapsed={setAiCollapsed}
+            />
+          )}
+
+          {selectedView === "analytics" && <Analytic tasks={tasks} />}
         </div>
       </AppLayout>
     </AuthGuard>
