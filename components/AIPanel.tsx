@@ -2,15 +2,18 @@
 
 import React from "react";
 import AIChat from "./AIChat"; // re-use previous full screen chat for right column or make a lighter version
+import { Task } from "@/types/task";
 
 export default function AIPanel({
   collapsed,
   onClose,
   onAIAction,
+  tasks = [],
 }: {
   collapsed?: boolean;
   onClose?: () => void;
   onAIAction?: () => void;
+  tasks?: Task[];
 }) {
   if (collapsed)
     return (
@@ -42,7 +45,7 @@ export default function AIPanel({
 
       <div className="flex-1 min-h-0 overflow-hidden p-4">
         {/* embed a compact chat UI component */}
-        <AIChat onAIAction={onAIAction} />
+        <AIChat onAIAction={onAIAction} tasks={tasks} />
       </div>
     </aside>
   );

@@ -67,10 +67,6 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        console.log(
-          "[Refresh Token] Access token expired, attempting to refresh..."
-        );
-
         // Try to refresh token
         const refreshResponse = await axios.post(
           `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
@@ -79,7 +75,6 @@ api.interceptors.response.use(
         );
 
         const newToken = refreshResponse.data.access_token;
-        console.log("[Refresh Token] Token refreshed successfully");
 
         // Store new token
         if (typeof window !== "undefined") {
@@ -130,7 +125,6 @@ api.interceptors.response.use(
 
           // Redirect to login
           if (window.location.pathname !== "/login") {
-            console.log("[Refresh Token] Redirecting to login...");
             window.location.href = "/login";
           }
         }

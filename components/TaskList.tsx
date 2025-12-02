@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import type { Task } from "@/types/task";
 import { deleteTask, updateTask } from "@/services/taskService";
+import toast from "react-hot-toast";
 
 // status options for the task list
 const STATUS_OPTIONS = [
@@ -27,10 +28,12 @@ export default function TaskList({
     try {
       setUpdatingId(taskId);
       await updateTask(taskId, { status: newStatus });
+      const statusLabel = STATUS_OPTIONS.find((opt) => opt.value === newStatus)?.label || newStatus;
+      toast.success(`Task status updated to ${statusLabel}`);
       onRefresh?.();
-    } catch (err) {
-      console.error("failed to update status", err);
-      alert("Failed to update status");
+    } catch (error) {
+      console.error("Failed to update task status:", error);
+      toast.error("Failed to update task status. Please try again.");
     } finally {
       setUpdatingId(null);
     }
@@ -38,13 +41,13 @@ export default function TaskList({
 
   async function handleDelete(id: string) {
     try {
-      console.log("deleting first task", id);
       setDeleting(true);
       await deleteTask(id);
+      toast.success("Task deleted successfully!");
       onRefresh?.();
-    } catch (err) {
-      console.error("delete failed", err);
-      alert("Failed to delete task");
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+      toast.error("Failed to delete task. Please try again.");
     } finally {
       setDeleting(false);
     }

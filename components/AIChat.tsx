@@ -12,13 +12,22 @@ import {
 } from "@/services/aiTools";
 
 import ReactMarkdown from "react-markdown";
+import { Task } from "@/types/task";
+import { generateTaskSummary } from "@/utils/taskSummary";
+import toast from "react-hot-toast";
 
 interface Message {
   role: "user" | "ai";
   text: string;
 }
 
-export default function AIChat({ onAIAction }: { onAIAction?: () => void }) {
+export default function AIChat({
+  onAIAction,
+  tasks = [],
+}: {
+  onAIAction?: () => void;
+  tasks?: Task[];
+}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,11 +46,24 @@ export default function AIChat({ onAIAction }: { onAIAction?: () => void }) {
     setInput("");
     setLoading(true);
 
+    // Generate summary if productivity question
+    const shouldIncludeSummary = isProductivityQuestion(userInput);
+    const summary =
+      shouldIncludeSummary && tasks.length > 0
+        ? generateTaskSummary(tasks)
+        : null;
+
+    // Build the prompt with optional summary
+    let prompt = userInput;
+    if (summary) {
+      prompt = `${summary}\n\nUser question: ${userInput}`;
+    }
+
     const model = getModel();
 
     try {
       const response = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: userInput }] }],
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
         tools: taskTools as Tool[],
       });
 
@@ -63,25 +85,36 @@ export default function AIChat({ onAIAction }: { onAIAction?: () => void }) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const argsObj = args as Record<string, any>;
 
-      if (name === "create_task") {
-        result = await aiCreateTask(
-          argsObj.title as string,
-          (argsObj.description as string) || ""
-        );
-        // Refresh tasks after AI creates a task
-        onAIAction?.();
-      } else if (name === "list_tasks") {
-        result = await aiListTasks();
-      } else if (name === "update_task") {
-        result = await aiUpdateTask({ ...argsObj });
-        // Refresh tasks after AI updates a task
-        onAIAction?.();
-      } else if (name === "delete_task") {
-        result = await aiDeleteTask(argsObj.id as string);
-        // Refresh tasks after AI deletes a task
-        onAIAction?.();
-      } else {
-        result = { error: "Unknown tool" };
+      try {
+        if (name === "create_task") {
+          result = await aiCreateTask(
+            argsObj.title as string,
+            (argsObj.description as string) || ""
+          );
+          toast.success("Task created successfully!");
+          // Refresh tasks after AI creates a task
+          onAIAction?.();
+        } else if (name === "list_tasks") {
+          result = await aiListTasks();
+        } else if (name === "update_task") {
+          result = await aiUpdateTask({ ...argsObj });
+          toast.success("Task updated successfully!");
+          // Refresh tasks after AI updates a task
+          onAIAction?.();
+        } else if (name === "delete_task") {
+          result = await aiDeleteTask(argsObj.id as string);
+          toast.success("Task deleted successfully!");
+          // Refresh tasks after AI deletes a task
+          onAIAction?.();
+        } else {
+          result = { error: "Unknown tool" };
+          toast.error("Unknown action requested");
+        }
+      } catch (toolError) {
+        console.error("Tool call error:", toolError);
+        const actionName = name.replace(/_/g, " ");
+        toast.error(`Failed to ${actionName}. Please try again.`);
+        result = { error: "Tool call failed" };
       }
 
       // Send tool response back to model
@@ -89,7 +122,7 @@ export default function AIChat({ onAIAction }: { onAIAction?: () => void }) {
         history: [
           {
             role: "user",
-            parts: [{ text: userInput }],
+            parts: [{ text: prompt }],
           },
           {
             role: "model",
@@ -115,6 +148,7 @@ export default function AIChat({ onAIAction }: { onAIAction?: () => void }) {
       setMessages((m) => [...m, { role: "ai", text: finalText }]);
     } catch (error) {
       console.error("Error in AI chat:", error);
+      toast.error("An error occurred. Please try again.");
       setMessages((m) => [
         ...m,
         {
@@ -124,6 +158,28 @@ export default function AIChat({ onAIAction }: { onAIAction?: () => void }) {
       ]);
     }
     setLoading(false);
+  }
+
+  // Helper to detect productivity questions
+  function isProductivityQuestion(userInput: string): boolean {
+    const productivityKeywords = [
+      "productivity",
+      "today",
+      "progress",
+      "completed",
+      "summary",
+      "stats",
+      "statistics",
+      "how many",
+      "what did i",
+      "what have i",
+      "how much",
+      "efficiency",
+      "performance",
+    ];
+
+    const lowerInput = userInput.toLowerCase();
+    return productivityKeywords.some((keyword) => lowerInput.includes(keyword));
   }
 
   return (

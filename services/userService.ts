@@ -1,9 +1,7 @@
 import api from "@/lib/axios";
 
 export async function getUser() {
-  console.log("Getting user");
   const res = await api.get("/users/");
-
   return res.data;
 }
 

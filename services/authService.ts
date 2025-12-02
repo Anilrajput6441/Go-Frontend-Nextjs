@@ -12,10 +12,8 @@ export async function registerUser(data: unknown) {
 }
 
 export async function refreshToken() {
-  console.log("refreshToken");
-  const refresh_token = localStorage.getItem("refresh_token");
-  console.log("refresh_token", refresh_token);
-  const res = await api.post("/auth/refresh", { refresh_token });
+  const refreshTokenValue = localStorage.getItem("refresh_token");
+  const res = await api.post("/auth/refresh", { refresh_token: refreshTokenValue });
   const token = res.data.access_token;
 
   if (typeof window !== "undefined") {

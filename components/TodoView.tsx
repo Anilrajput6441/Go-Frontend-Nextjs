@@ -42,10 +42,10 @@ export default function TodoView({
             collapsed={aiCollapsed}
             onClose={() => setAiCollapsed(true)}
             onAIAction={refreshTasks}
+            tasks={tasks}
           />
         </div>
       </main>
     </div>
   );
 }
-

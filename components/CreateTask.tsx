@@ -2,24 +2,26 @@
 
 import React, { useState } from "react";
 import { aiCreateTask } from "@/services/aiTools";
+import toast from "react-hot-toast";
 
 export default function CreateTask({ onCreated }: { onCreated?: () => void }) {
   const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
+  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function submit(e?: React.FormEvent) {
-    e?.preventDefault();
+  async function handleSubmit(event?: React.FormEvent) {
+    event?.preventDefault();
     if (!title.trim()) return;
     setLoading(true);
     try {
-      await aiCreateTask(title, desc);
+      await aiCreateTask(title, description);
       setTitle("");
-      setDesc("");
+      setDescription("");
+      toast.success("Task created successfully!");
       onCreated?.();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to create task");
+    } catch (error) {
+      console.error("Failed to create task:", error);
+      toast.error("Failed to create task. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -27,7 +29,7 @@ export default function CreateTask({ onCreated }: { onCreated?: () => void }) {
 
   return (
     <form
-      onSubmit={submit}
+      onSubmit={handleSubmit}
       className="bg-white p-4 rounded-2xl border border-gray-200 dark:border-gray-800 "
     >
       <div className="flex gap-3">
@@ -35,7 +37,7 @@ export default function CreateTask({ onCreated }: { onCreated?: () => void }) {
           className="flex-1 p-2 border rounded"
           placeholder="Task title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(event) => setTitle(event.target.value)}
           required
         />
         <select className="p-2 border rounded">
@@ -49,8 +51,8 @@ export default function CreateTask({ onCreated }: { onCreated?: () => void }) {
         className="w-full mt-3 p-2 border rounded"
         placeholder="Description (optional)"
         rows={3}
-        value={desc}
-        onChange={(e) => setDesc(e.target.value)}
+        value={description}
+        onChange={(event) => setDescription(event.target.value)}
       />
 
       <div className="mt-3 flex gap-2">
@@ -65,7 +67,7 @@ export default function CreateTask({ onCreated }: { onCreated?: () => void }) {
           type="button"
           onClick={() => {
             setTitle("");
-            setDesc("");
+            setDescription("");
           }}
           className="px-4 py-2 border rounded"
         >

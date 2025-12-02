@@ -16,6 +16,7 @@ export async function aiUpdateTask(data: unknown) {
 }
 
 export async function aiDeleteTask(id: string) {
-  const res = await api.post("/mcp/task/delete", { id });
+  // Use the same endpoint format as regular delete (known to work)
+  const res = await api.delete(`/tasks/${id}`);
   return res.data;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import type { Task } from "@/types/task";
 import {
   BarChart,
@@ -49,9 +49,6 @@ function normalizeStatus(status: string): string {
 }
 
 export default function Analytic({ tasks }: AnalyticProps) {
-  useEffect(() => {
-    console.log(tasks);
-  }, [tasks]);
   const [dateFilter, setDateFilter] = useState<DateFilter>("last7days");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
@@ -106,20 +103,20 @@ export default function Analytic({ tasks }: AnalyticProps) {
   }, [dateFilter, customStartDate, customEndDate]);
 
   // Helper to get date from task (handles both camelCase and snake_case)
-  const getTaskDate = (
-    task: Task,
-    field: "created" | "updated"
-  ): string | undefined => {
-    const taskWithSnakeCase = task as Task & {
-      created_at?: string;
-      updated_at?: string;
-    };
-    if (field === "created") {
-      return taskWithSnakeCase.created_at || task.createdAt;
-    } else {
-      return taskWithSnakeCase.updated_at || task.updatedAt;
-    }
-  };
+  const getTaskDate = useCallback(
+    (task: Task, field: "created" | "updated"): string | undefined => {
+      const taskWithSnakeCase = task as Task & {
+        created_at?: string;
+        updated_at?: string;
+      };
+      if (field === "created") {
+        return taskWithSnakeCase.created_at || task.createdAt;
+      } else {
+        return taskWithSnakeCase.updated_at || task.updatedAt;
+      }
+    },
+    []
+  );
 
   // Filter tasks by date range - moved into useMemo to avoid dependency issues
   const filteredTasks = useMemo(() => {
@@ -170,22 +167,19 @@ export default function Analytic({ tasks }: AnalyticProps) {
     };
 
     return filterTasksByDate(tasks, dateRange);
-  }, [tasks, dateRange]);
-
-  // Use filtered tasks - if no tasks match the date range, show empty results
-  const tasksToUse = filteredTasks;
+  }, [tasks, dateRange, getTaskDate]);
 
   // Calculate metrics
   const metrics = useMemo(() => {
-    const total = tasksToUse.length;
-    const completed = tasksToUse.filter(
+    const total = filteredTasks.length;
+    const completed = filteredTasks.filter(
       (t) => normalizeStatus(t.status) === "done"
     ).length;
     // Handle both "in-progress" and "in_progress" formats
-    const inProgress = tasksToUse.filter(
+    const inProgress = filteredTasks.filter(
       (t) => normalizeStatus(t.status) === "in-progress"
     ).length;
-    const todo = tasksToUse.filter(
+    const todo = filteredTasks.filter(
       (t) => normalizeStatus(t.status) === "todo"
     ).length;
     const remaining = todo + inProgress;
@@ -199,7 +193,7 @@ export default function Analytic({ tasks }: AnalyticProps) {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    const completedThisMonth = tasksToUse.filter((task) => {
+    const completedThisMonth = filteredTasks.filter((task) => {
       const updatedAt = getTaskDate(task, "updated");
       if (normalizeStatus(task.status) !== "done" || !updatedAt) return false;
       const updatedDate = new Date(updatedAt);
@@ -221,7 +215,7 @@ export default function Analytic({ tasks }: AnalyticProps) {
         day: "numeric",
       });
 
-      const count = tasksToUse.filter((task) => {
+      const count = filteredTasks.filter((task) => {
         const updatedAt = getTaskDate(task, "updated");
         if (normalizeStatus(task.status) !== "done" || !updatedAt) return false;
         const taskDate = new Date(updatedAt);
@@ -273,7 +267,7 @@ export default function Analytic({ tasks }: AnalyticProps) {
       let weekInProgress = 0;
       let weekCreated = 0;
 
-      tasksToUse.forEach((task) => {
+      filteredTasks.forEach((task) => {
         // Get dates using helper (handles both formats)
         const updatedAt = getTaskDate(task, "updated");
         const createdAt = getTaskDate(task, "created");
@@ -338,7 +332,7 @@ export default function Analytic({ tasks }: AnalyticProps) {
       dailyCompletions,
       weeklyTrends,
     };
-  }, [tasksToUse]);
+  }, [filteredTasks, getTaskDate]);
 
   // Pie chart data - handle both status formats
   const statusData = [
