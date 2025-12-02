@@ -1,50 +1,67 @@
-# Task Management Application with AI Assistant
+# Task Management Application with AI Assistant (MCP-Based)
 
-A modern, feature-rich task management application built with Next.js and powered by Google Gemini AI. Manage your tasks efficiently with an intelligent AI assistant that can create, update, delete, and provide insights about your tasks through natural language conversations.
+A modern, feature-rich task management application built with Next.js and powered by Google Gemini AI.Where AI can create, update, delete, and summarize tasks by calling real backend functions
 
 ![Next.js](https://img.shields.io/badge/Next.js-16.0-black?style=for-the-badge&logo=next.js)
 ![React](https://img.shields.io/badge/React-19.2-blue?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8?style=for-the-badge&logo=tailwind-css)
+![Go](https://img.shields.io/badge/Go-1.25-38bdf8?style=for-the-badge&logo=go)
 
 ## 📋 What This App Does
 
-This application is a comprehensive task management system designed to help users organize, track, and analyze their productivity. The app combines traditional task management features with cutting-edge AI capabilities, allowing users to interact with their tasks using natural language.
-
+The AI is not just a chatbot — it works using a Model Context Protocol (MCP)-style architecture, meaning the model can invoke backend tools to perform real actions safely and deterministically.
 **Key Capabilities:**
 
-- ✅ Create, update, and delete tasks with a simple interface
-- 🤖 Interact with an AI assistant to manage tasks through conversation
-- 📊 Track productivity with detailed analytics and visualizations
-- 🔐 Secure authentication with JWT token management
-- 📈 Monitor task completion trends and efficiency metrics
-- 🎯 Filter and view tasks by date ranges
-- 👤 Manage user profile and security settings
+-  Create, update, and delete tasks with a simple interface
+-  Interact with an AI assistant to manage tasks through conversation
+-  Track productivity with detailed analytics and visualizations
+-  Secure authentication with JWT token management
+-  Monitor task completion trends and efficiency metrics
+-  Filter and view tasks by date ranges
+-  Manage user profile and security settings
 
 ## 📸 Screenshots
 
 ### Dashboard - Task Management
 
-![Dashboard View](./screenshots/dashboard.png)
+
 _Main dashboard showing the task list with create task form and AI assistant panel_
+<img width="1552" height="907" alt="Screenshot 2025-12-02 at 7 58 27 PM" src="https://github.com/user-attachments/assets/eee736c6-ecd4-48df-b4d0-70047532eb4e" />
 
-### AI Assistant
-
-![AI Chat](./screenshots/ai-chat.png)
-_AI-powered chat interface for managing tasks through natural language commands_
 
 ### Analytics Dashboard
 
-![Analytics](./screenshots/analytics.png)
+
 _Comprehensive analytics view with charts showing task completion trends, status distribution, and productivity metrics_
+<img width="1552" height="907" alt="Screenshot 2025-12-02 at 8 00 02 PM" src="https://github.com/user-attachments/assets/28f49c55-6e08-4853-a6cf-c68f8e7630fa" />
+<img width="1552" height="907" alt="Screenshot 2025-12-02 at 8 00 19 PM" src="https://github.com/user-attachments/assets/46c7e549-11b1-4885-97c0-57fc61ce379d" />
 
-### Profile Management
+## MCP (Model Context Protocol) – How AI Works Here
 
-![Profile](./screenshots/profile.png)
-_User profile page with account information and security settings_
+This project implements an Action-based MCP pattern.
+### What kind of MCP is this?
+- **HTTP-based, Tool-Calling MCP**
+- **Server-controlled execution**
+- **Deterministic & safe**
 
-**Note:** To add screenshots, place image files in a `screenshots/` directory and update the paths above.
+### What the AI can do:
+- *Call create_task*
+- *Call update_task*
+- *Call delete_task*
+- *Call list_tasks*
+- *Ask for task summaries*
 
+### What the AI cannot do:
+- *Directly modify the database*
+- *Execute arbitrary code*
+- *Bypass authentication*
+- *Guess or hallucinate task state*
+
+#### All actions go through typed, validated backend functions.
+
+- The model decides what tool to call,
+- the server decides how the action is executed.
 ## ✨ Features
 
 ### 🎯 Task Management
@@ -135,6 +152,10 @@ _User profile page with account information and security settings_
 
 - **JWT Tokens** - Secure authentication
 - **Cookie-based Sessions** - Persistent login sessions
+
+### Backend
+# follow the link for backend Repo:[Go Backend](https://github.com/Anilrajput6441/MCP-GO-Backend.git)
+- *The backend is written in Go so follow the repo Readme to initialize the backend*
 
 ## 🚀 Getting Started
 
@@ -285,4 +306,4 @@ This project is private and proprietary.
 
 ---
 
-**Built with ❤️ using Next.js and AI**
+**Anil Behera**
